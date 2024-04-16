@@ -31,9 +31,9 @@
 #include "ortools/base/zipfile.h"
 
 #if defined(_MSC_VER)
-#define ROOT_DIR "../../../../../../../"
+#define ROOT_DIR "com_google_ortools/"
 #else
-#define ROOT_DIR
+#define ROOT_DIR "com_google_ortools/"
 #endif  // _MSC_VER
 
 namespace operations_research {

@@ -20,12 +20,10 @@
 #include "ortools/base/path.h"
 
 #if defined(_MSC_VER)
-#define ROOT_DIR "../../../../../../../"
+#define ROOT_DIR "com_google_ortools/"
 #else
-#define ROOT_DIR
+#define ROOT_DIR "com_google_ortools/"
 #endif  // _MSC_VER
-
-ABSL_FLAG(std::string, test_srcdir, "", "REQUIRED: src dir");
 
 namespace operations_research {
 namespace {
