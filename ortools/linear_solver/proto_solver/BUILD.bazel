@@ -35,6 +35,7 @@ cc_library(
         "//ortools/glop:parameters_validation",
         "//ortools/linear_solver:linear_solver_cc_proto",
         "//ortools/linear_solver:model_validator",
+        "//ortools/linear_solver:scip_with_clp",
         "//ortools/lp_data",
         "//ortools/lp_data:base",
         "//ortools/lp_data:proto_utils",
