@@ -1,5 +1,5 @@
 exports_files(
-    ["src/lpi/lpi_glop.cpp"],
+    ["src/lpi/lpi_clp.cpp"],
 )
 
 config_setting(
@@ -118,5 +118,6 @@ cc_library(
     deps = [
         #"@cppad:cppad_includes",
         "@zlib//:zlib",
+        "@clp//:clp",
     ] + PLATFORM_DEPS,
 )

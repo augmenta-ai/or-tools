@@ -85,6 +85,13 @@ http_archive(
     #url = "http://www.tcs.hut.fi/Software/bliss/bliss-0.73.zip",
 )
 
+# Add a new local repository for clp.
+new_local_repository(
+    name = "clp",
+    path = "/usr/include/coin",
+    build_file = "//bazel:clp.BUILD",
+)
+
 new_git_repository(
     name = "scip",
     build_file = "//bazel:scip.BUILD",

@@ -56,7 +56,7 @@ cc_library(
         "//ortools/linear_solver:linear_solver_cc_proto",
         "//ortools/linear_solver:model_exporter",
         "//ortools/linear_solver:model_validator",
-        "//ortools/linear_solver:scip_with_glop",
+        "//ortools/linear_solver:scip_with_clp",
         "//ortools/pdlp:primal_dual_hybrid_gradient",
         "//ortools/pdlp:solve_log_cc_proto",
         "//ortools/pdlp:solvers_cc_proto",

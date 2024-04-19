@@ -74,12 +74,13 @@ cc_library(
         "bop_interface.cc",
         "glop_interface.cc",
         "glop_utils.cc",
+        "clp_interface.cc",
         "gurobi_interface.cc",
         "highs_interface.cc",
         "linear_expr.cc",
         "linear_solver_callback.cc",
         "linear_solver.cc",
-        "lpi_glop.cpp",
+        "lpi_clp.cpp",
         "pdlp_interface.cc",
         "sat_interface.cc",
         "scip_callback.cc",
@@ -101,7 +102,7 @@ cc_library(
         "//conditions:default": [],
     }),
     hdrs = [
-        "glop_interface.cc",
+        "clp_interface.cc",
         "glop_utils.h",
         "linear_expr.h",
         "linear_solver.h",
@@ -119,7 +120,7 @@ cc_library(
     }),
     deps = [
         ":linear_solver_cc_proto",
-        ":scip_with_glop",
+        ":scip_with_clp",
         ":model_exporter",
         ":model_validator",
         "@com_google_absl//absl/status",
@@ -184,16 +185,15 @@ cc_library(
 )
 
 copy_file(
-    name = "lpi_glop",
-    src = "@scip//:src/lpi/lpi_glop.cpp",
-    out = "lpi_glop.cpp",
+    name = "lpi_clp",
+    src = "@scip//:src/lpi/lpi_clp.cpp",
+    out = "lpi_clp.cpp",
 )
 
 cc_library(
-    name = "scip_with_glop",
-    srcs = ["lpi_glop.cpp"],
+    name = "scip_with_clp",
+    srcs = ["lpi_clp.cpp"],
     deps = [
-        "//ortools/glop:lp_solver",
         "@scip//:libscip",
     ],
 )
