@@ -412,3 +412,68 @@ index 484627c4b9..27c2895165 100644
  
  #include <string.h>
  #include <vector>
+
+
+diff --git a/src/lpi/lpi_clp.cpp b/src/lpi/lpi_clp.cpp
+index e7f00075a4..b7d150c734 100644
+--- a/src/lpi/lpi_clp.cpp
++++ b/src/lpi/lpi_clp.cpp
+@@ -735,19 +735,22 @@ SCIP_RETCODE SCIPlpiLoadColLP(
+    // copy column and rownames if necessary
+    if ( colnames || rownames )
+    {
+-      std::vector<std::string> columnNames(ncols);
+-      std::vector<std::string> rowNames(nrows);
++      std::vector<const char*> columnNames;
++      columnNames.reserve(ncols);
++      std::vector<const char*> rowNames;
++      rowNames.reserve(nrows);
+       if (colnames)
+       {
+          for (int j = 0; j < ncols; ++j)
+-            columnNames[j].assign(colnames[j]);
++            columnNames.push_back(colnames[j]);
+       }
+       if (rownames)
+       {
+-         for (int i = 0; i < ncols; ++i)
+-            rowNames[i].assign(rownames[i]);
++         for (int i = 0; i < nrows; ++i)
++            rowNames.push_back(rownames[i]);
+       }
+-      clp->copyNames(rowNames, columnNames);
++      clp->copyColumnNames(columnNames.data(), 0, ncols);
++      clp->copyRowNames(rowNames.data(), 0, nrows);
+    }
+ 
+    return SCIP_OKAY;
+@@ -823,10 +826,11 @@ SCIP_RETCODE SCIPlpiAddCols(
+    // copy columnnames if necessary
+    if ( colnames )
+    {
+-      std::vector<std::string> columnNames(ncols);
++      std::vector<const char*> columnNames;
++      columnNames.reserve(ncols);
+       for (int j = 0; j < ncols; ++j)
+-         columnNames[j].assign(colnames[j]);
+-      lpi->clp->copyColumnNames(columnNames, numCols, numCols + ncols);
++         columnNames.push_back(colnames[j]);
++      lpi->clp->copyColumnNames(columnNames.data(), numCols, numCols + ncols);
+    }
+ 
+    return SCIP_OKAY;
+@@ -972,10 +976,11 @@ SCIP_RETCODE SCIPlpiAddRows(
+    // copy rownames if necessary
+    if ( rownames )
+    {
+-      std::vector<std::string> rowNames(nrows);
++      std::vector<const char *> rowNames;
++      rowNames.reserve(nrows);
+       for (int j = 0; j < nrows; ++j)
+-         rowNames[j].assign(rownames[j]);
+-      lpi->clp->copyRowNames(rowNames, numRows, numRows + nrows);
++         rowNames.push_back(rownames[j]);
++      lpi->clp->copyRowNames(rowNames.data(), numRows, numRows + nrows);
+    }
+ 
+    return SCIP_OKAY;
