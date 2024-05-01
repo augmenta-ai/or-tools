@@ -255,7 +255,6 @@ cc_library(
     }),
     deps = [
         ":linear_solver_cc_proto",
-        ":scip_with_clp",
         ":model_exporter",
         ":model_validator",
         "//ortools/base",
