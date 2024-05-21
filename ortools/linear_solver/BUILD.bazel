@@ -201,7 +201,7 @@ cc_library(
         "//conditions:default": [],
     }) + select({
         ":use_scip": [
-            "lpi_glop.cpp",
+            "lpi_clp.cpp",
             "scip_callback.cc",
             "scip_interface.cc",
         ],
@@ -211,6 +211,7 @@ cc_library(
         "//conditions:default": [],
     }),
     hdrs = [
+        "clp_interface.cc",
         "linear_expr.h",
         "linear_solver.h",
         "linear_solver_callback.h",
@@ -311,7 +312,7 @@ cc_library(
         "//conditions:default": [],
     }) + select({
         ":use_scip": [
-            ":scip_with_glop",
+            ":scip_with_clp",
             "//ortools/gscip:legacy_scip_params",
             "//ortools/linear_solver/proto_solver:scip_proto_solver",
         ],
@@ -344,16 +345,15 @@ cc_library(
 )
 
 copy_file(
-    name = "lpi_glop",
-    src = "@scip//:src/lpi/lpi_glop.cpp",
-    out = "lpi_glop.cpp",
+    name = "lpi_clp",
+    src = "@scip//:src/lpi/lpi_clp.cpp",
+    out = "lpi_clp.cpp",
 )
 
 cc_library(
-    name = "scip_with_glop",
-    srcs = ["lpi_glop.cpp"],
+    name = "scip_with_clp",
+    srcs = ["lpi_clp.cpp"],
     deps = [
-        "//ortools/glop:lp_solver",
         "@scip//:libscip",
     ],
 )
