@@ -26,7 +26,7 @@ cc_library(
         ":solvers_cc_proto",
         "//ortools/base:threadpool",
         "@com_google_absl//absl/functional:any_invocable",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -97,7 +97,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@com_google_absl//absl/random:distributions",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -113,7 +113,7 @@ cc_test(
         ":solvers_cc_proto",
         ":test_util",
         "//ortools/base:protobuf_util",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -149,7 +149,7 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -177,7 +177,7 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -192,7 +192,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -209,7 +209,7 @@ cc_test(
         "//ortools/linear_solver:linear_solver_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -232,7 +232,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -248,7 +248,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@com_google_absl//absl/random:distributions",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -264,7 +264,7 @@ cc_test(
         ":sharder",
         ":solve_log_cc_proto",
         ":test_util",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -281,7 +281,7 @@ cc_library(
         "//ortools/util:logging",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -294,7 +294,7 @@ cc_test(
         ":sharded_quadratic_program",
         ":sharder",
         ":test_util",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -309,7 +309,7 @@ cc_library(
         "//ortools/base:timer",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -324,7 +324,7 @@ cc_test(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@com_google_absl//absl/random:distributions",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -387,7 +387,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:gmock",
         "@com_google_absl//absl/types:span",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -399,7 +399,7 @@ cc_test(
         ":test_util",
         "//ortools/base",
         "@com_google_absl//absl/types:span",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -415,7 +415,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@com_google_absl//absl/algorithm:container",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -431,6 +431,6 @@ cc_test(
         ":test_util",
         ":trust_region",
         "@com_google_absl//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
