@@ -58,7 +58,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "@scip",
+        "@scip//:libscip",
     ],
 )
 
@@ -89,7 +89,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@scip",
+        "@scip//:libscip",
     ],
 )
 
@@ -101,7 +101,7 @@ cc_library(
         ":gscip",
         "//ortools/base:status_macros",
         "@com_google_absl//absl/status",
-        "@scip",
+        "@scip//:libscip",
     ],
 )
 
@@ -114,7 +114,7 @@ cc_library(
         "//ortools/linear_solver:scip_helper_macros",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@scip",
+        "@scip//:libscip",
     ],
 )
 
@@ -122,7 +122,7 @@ cc_library(
     name = "gscip_callback_result",
     srcs = ["gscip_callback_result.cc"],
     hdrs = ["gscip_callback_result.h"],
-    deps = ["@scip"],
+    deps = ["@scip//:libscip"],
 )
 
 cc_library(
@@ -138,6 +138,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
-        "@scip",
+        "@scip//:libscip",
     ],
 )

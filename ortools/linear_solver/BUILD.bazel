@@ -313,7 +313,7 @@ cc_library(
         ":use_scip": [
             "//ortools/gscip:legacy_scip_params",
             "//ortools/linear_solver/proto_solver:scip_proto_solver",
-            "@scip",
+            "@scip//:libscip",
         ],
         "//conditions:default": [],
     }),
