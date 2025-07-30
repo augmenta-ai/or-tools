@@ -19,7 +19,8 @@ exports_files([
     "notebook_requirements.txt",
     "ortools_requirements.in",
     "ortools_requirements.txt",
-    "scip-v920.patch",
+    "scip-v900.patch",
+    "scip.BUILD.bazel",
 ])
 
 compile_pip_requirements(
