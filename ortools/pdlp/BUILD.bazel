@@ -27,7 +27,7 @@ cc_library(
         "//ortools/base:threadpool",
         "@abseil-cpp//absl/functional:any_invocable",
         "@abseil-cpp//absl/log",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -98,7 +98,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@abseil-cpp//absl/random:distributions",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -114,7 +114,7 @@ cc_test(
         ":solvers_cc_proto",
         ":test_util",
         "//ortools/base:protobuf_util",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -149,7 +149,7 @@ cc_library(
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:str_format",
         "@abseil-cpp//absl/time",
-        "@eigen",
+        "@eigen//:eigen3",
         "@protobuf",
     ],
 )
@@ -178,7 +178,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -193,7 +193,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -210,7 +210,7 @@ cc_test(
         "//ortools/linear_solver:linear_solver_cc_proto",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -233,7 +233,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:str_format",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -249,7 +249,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@abseil-cpp//absl/random:distributions",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -265,7 +265,7 @@ cc_test(
         ":sharder",
         ":solve_log_cc_proto",
         ":test_util",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -282,7 +282,7 @@ cc_library(
         "//ortools/util:logging",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -295,7 +295,7 @@ cc_test(
         ":sharded_quadratic_program",
         ":sharder",
         ":test_util",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -313,7 +313,7 @@ cc_library(
         "@abseil-cpp//absl/log:vlog_is_on",
         "@abseil-cpp//absl/synchronization",
         "@abseil-cpp//absl/time",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -329,7 +329,7 @@ cc_test(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@abseil-cpp//absl/random:distributions",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -392,7 +392,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:gmock",
         "@abseil-cpp//absl/types:span",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -404,7 +404,7 @@ cc_test(
         ":test_util",
         "//ortools/base",
         "@abseil-cpp//absl/types:span",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -420,7 +420,7 @@ cc_library(
         "//ortools/base",
         "//ortools/base:mathutil",
         "@abseil-cpp//absl/algorithm:container",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
 
@@ -436,6 +436,6 @@ cc_test(
         ":test_util",
         ":trust_region",
         "@abseil-cpp//absl/strings",
-        "@eigen",
+        "@eigen//:eigen3",
     ],
 )
