@@ -26,6 +26,8 @@
 #include "absl/strings/string_view.h"
 #include "ortools/base/macros.h"
 
+#define VLOG_IS_ON(A) (false)
+
 // Forward the new flag.
 ABSL_DECLARE_FLAG(int, stderrthreshold);
 
