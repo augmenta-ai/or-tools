@@ -1,3 +1,7 @@
+<<<<<<<< HEAD:ortools/BUILD.bazel
+========
+#!/usr/bin/env python3
+>>>>>>>> b880e0fb64 (Use new bintest framework (#4928)):tools/testing/bintest_script_launcher.py
 # Copyright 2010-2025 Google LLC
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -10,3 +14,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<<< HEAD:ortools/BUILD.bazel
+========
+
+"""Launcher for the bintest script runner."""
+
+import sys
+
+from tools.testing import bintest_script_runner
+
+
+if __name__ == "__main__":
+    bintest_script_runner.main(sys.argv)
+>>>>>>>> b880e0fb64 (Use new bintest framework (#4928)):tools/testing/bintest_script_launcher.py
