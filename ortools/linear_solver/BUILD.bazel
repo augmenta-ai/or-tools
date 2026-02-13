@@ -97,7 +97,7 @@ config_setting(
 
 bool_flag(
     name = "with_highs",
-    build_setting_default = False,
+    build_setting_default = True,
 )
 
 config_setting(
@@ -299,6 +299,12 @@ cc_library(
         ":use_glpk": [
             "//ortools/glpk:glpk_env_deleter",
             "@glpk",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        ":use_highs": [
+            "//ortools/linear_solver/proto_solver:highs_proto_solver",
+            "@highs",
         ],
         "//conditions:default": [],
     }) + select({
