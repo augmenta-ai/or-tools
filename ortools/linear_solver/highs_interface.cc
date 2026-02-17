@@ -121,16 +121,6 @@ MPSolver::ResultStatus HighsInterface::Solve(const MPSolverParameters& param) {
     // parameters_.set_verbosity_level(3);
   }
 
-  solver_->SetSolverSpecificParametersAsString(
-      solver_->solver_specific_parameter_string_);
-
-  // Time limit.
-  if (solver_->time_limit()) {
-    VLOG(1) << "Setting time limit = " << solver_->time_limit() << " ms.";
-    // parameters_.mutable_termination_criteria()->set_time_sec_limit(
-    //     static_cast<double>(solver_->time_limit()) / 1000.0);
-  }
-
   // Mark variables and constraints as extracted.
   for (int i = 0; i < solver_->variables_.size(); ++i) {
     set_variable_as_extracted(i, true);
@@ -147,7 +137,20 @@ MPSolver::ResultStatus HighsInterface::Solve(const MPSolverParameters& param) {
                               ? MPModelRequest::HIGHS_MIXED_INTEGER_PROGRAMMING
                               : MPModelRequest::HIGHS_LINEAR_PROGRAMMING);
 
-  // Set parameters.
+  // Set time limit.
+  if (solver_->time_limit()) {
+    VLOG(1) << "Setting time limit = " << solver_->time_limit() << " ms.";
+    request.set_solver_time_limit_seconds(
+        static_cast<double>(solver_->time_limit()) / 1000.0);
+  }
+
+  // Set solver-specific parameters.
+  if (!solver_->solver_specific_parameter_string_.empty()) {
+    request.set_solver_specific_parameters(
+        solver_->solver_specific_parameter_string_);
+  }
+
+  // Solve.
   absl::StatusOr<MPSolutionResponse> response =
       HighsSolveProto(std::move(request));
 
@@ -228,13 +231,13 @@ int64_t HighsInterface::nodes() const {
 }
 
 MPSolver::BasisStatus HighsInterface::row_status(int constraint_index) const {
-  // TODO(user): While basis status isn't well defined for PDLP, we could
+  // TODO(user): While basis status isn't well defined for HiGHS, we could
   // guess statuses that might be useful.
   return MPSolver::BasisStatus::FREE;
 }
 
 MPSolver::BasisStatus HighsInterface::column_status(int variable_index) const {
-  // TODO(user): While basis status isn't well defined for PDLP, we could
+  // TODO(user): While basis status isn't well defined for HiGHS, we could
   // guess statuses that might be useful.
   return MPSolver::BasisStatus::FREE;
 }
@@ -245,10 +248,8 @@ bool HighsInterface::IsLP() const { return true; }
 
 bool HighsInterface::IsMIP() const { return solve_as_a_mip_; }
 
-std::string HighsInterface::SolverVersion() const { return "PDLP Solver"; }
+std::string HighsInterface::SolverVersion() const { return "HiGHS"; }
 
-// TODO(user): Consider returning the SolveLog here, as it could be essential
-// for interpreting the PDLP solution.
 void* HighsInterface::underlying_solver() { return nullptr; }
 
 void HighsInterface::ExtractNewVariables() { NonIncrementalChange(); }
@@ -289,7 +290,7 @@ void HighsInterface::NonIncrementalChange() {
   sync_status_ = MUST_RELOAD;
 }
 
-// Register PDLP in the global linear solver factory.
+// Register HiGHS in the global linear solver factory.
 MPSolverInterface* BuildHighsInterface(bool mip, MPSolver* const solver) {
   return new HighsInterface(solver, mip);
 }
