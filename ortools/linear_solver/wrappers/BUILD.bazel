@@ -29,11 +29,16 @@ cc_library(
     name = "model_builder_helper",
     srcs = ["model_builder_helper.cc"],
     hdrs = ["model_builder_helper.h"],
-    copts = [
-        "-DUSE_HIGHS",
-        "-DUSE_PDLP",
-        "-DUSE_SCIP",
-    ],
+    copts = [] + select({
+        "//ortools/linear_solver:use_highs": ["-DUSE_HIGHS"],
+        "//conditions:default": [],
+    }) + select({
+        "//ortools/linear_solver:use_pdlp": ["-DUSE_PDLP"],
+        "//conditions:default": [],
+    }) + select({
+        "//ortools/linear_solver:use_scip": ["-DUSE_SCIP"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [
         "//ortools/base:file",

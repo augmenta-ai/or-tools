@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(USE_HIGHS)
+
 #include "ortools/linear_solver/proto_solver/highs_proto_solver.h"
 
 #include <cassert>
@@ -338,3 +340,5 @@ absl::Status SetSolverSpecificParameters(const std::string& parameters,
 }
 
 }  // namespace operations_research
+
+#endif  //  #if defined(USE_HIGHS)
