@@ -145,9 +145,8 @@ std::vector<std::string> SetSolveParameters(
   if (parameters.has_random_seed()) {
     sat_parameters.set_random_seed(parameters.random_seed());
   }
-  if (parameters.has_threads()) {
-    sat_parameters.set_num_workers(parameters.threads());
-  }
+  // Parallel/concurrent CP-SAT disabled - always use single-threaded mode
+  sat_parameters.set_num_workers(1);
   if (parameters.has_relative_gap_tolerance()) {
     sat_parameters.set_relative_gap_limit(parameters.relative_gap_tolerance());
   }

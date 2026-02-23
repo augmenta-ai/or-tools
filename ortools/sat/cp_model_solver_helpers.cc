@@ -2192,15 +2192,13 @@ void AdaptGlobalParameters(const CpModelProto& model_proto, Model* model) {
   }
 
   if (params->num_workers() == 0) {
-    // Initialize the number of workers if set to 0.
-#if !defined(__PORTABLE_PLATFORM__)
-    // Sometimes, hardware_concurrency will return 0. So always default to 1.
-    const int num_cores = std::max<int>(std::thread::hardware_concurrency(), 1);
-#else
-    const int num_cores = 1;
-#endif
-    SOLVER_LOG(logger, "Setting number of workers to ", num_cores);
-    params->set_num_workers(num_cores);
+    // Parallel/concurrent CP-SAT disabled - force single-threaded mode
+    SOLVER_LOG(logger, "Setting number of workers to 1 (parallelism disabled)");
+    params->set_num_workers(1);
+  } else if (params->num_workers() > 1) {
+    // Override any multi-threaded configuration
+    SOLVER_LOG(logger, "Overriding num_workers to 1 (parallelism disabled)");
+    params->set_num_workers(1);
   }
 
   if (params->shared_tree_num_workers() == -1) {

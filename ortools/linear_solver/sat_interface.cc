@@ -240,7 +240,8 @@ void SatInterface::ExtractObjective() { NonIncrementalChange(); }
 
 void SatInterface::SetParameters(const MPSolverParameters& param) {
   parameters_.Clear();
-  parameters_.set_num_workers(num_threads_);
+  // Parallel/concurrent CP-SAT disabled - always use single-threaded mode
+  parameters_.set_num_workers(1);
   SetCommonParameters(param);
 }
 
