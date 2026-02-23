@@ -68,9 +68,7 @@ void GScipSetMaxNumThreads(int num_threads, GScipParameters* parameters) {
 }
 
 int GScipMaxNumThreads(const GScipParameters& parameters) {
-  if (parameters.int_params().contains(std::string(kParallelMaxNThreads))) {
-    return parameters.int_params().at(std::string(kParallelMaxNThreads));
-  }
+  // Force single-threaded mode - concurrent/parallel SCIP disabled
   return 1;
 }
 

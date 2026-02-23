@@ -812,9 +812,8 @@ MPSolver::ResultStatus SCIPInterface::Solve(const MPSolverParameters& param) {
 
   // Solve.
   timer.Restart();
-  RETURN_ABNORMAL_IF_SCIP_ERROR(solver_->GetNumThreads() > 1
-                                    ? SCIPsolveConcurrent(scip_)
-                                    : SCIPsolve(scip_));
+  // Concurrent/parallel SCIP disabled - always use single-threaded SCIPsolve
+  RETURN_ABNORMAL_IF_SCIP_ERROR(SCIPsolve(scip_));
   VLOG(1) << absl::StrFormat("Solved in %s.",
                              absl::FormatDuration(timer.GetDuration()));
   current_solution_index_ = 0;

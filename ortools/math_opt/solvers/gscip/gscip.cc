@@ -995,11 +995,8 @@ absl::StatusOr<GScipResult> GScip::Solve(
   // Step 2: Solve.
   // NOTE(user): after solve, SCIP will either be in stage PRESOLVING,
   // SOLVING, OR SOLVED.
-  if (GScipMaxNumThreads(params) > 1) {
-    RETURN_IF_SCIP_ERROR(SCIPsolveConcurrent(scip_));
-  } else {
-    RETURN_IF_SCIP_ERROR(SCIPsolve(scip_));
-  }
+  // Concurrent/parallel SCIP disabled - always use single-threaded SCIPsolve
+  RETURN_IF_SCIP_ERROR(SCIPsolve(scip_));
   const SCIP_STAGE stage = SCIPgetStage(scip_);
   if (stage != SCIP_STAGE_PRESOLVING && stage != SCIP_STAGE_PRESOLVED &&
       stage != SCIP_STAGE_SOLVING && stage != SCIP_STAGE_SOLVED) {
