@@ -41,6 +41,7 @@
 #include "ortools/math_opt/solver_tests/lp_model_solve_parameters_tests.h"
 #include "ortools/math_opt/solver_tests/lp_parameter_tests.h"
 #include "ortools/math_opt/solver_tests/lp_tests.h"
+#include "ortools/math_opt/solver_tests/logical_constraint_tests.h"
 #include "ortools/math_opt/solver_tests/mip_tests.h"
 #include "ortools/math_opt/solver_tests/multi_objective_tests.h"
 #include "ortools/math_opt/solver_tests/status_tests.h"
@@ -259,6 +260,30 @@ INSTANTIATE_TEST_SUITE_P(HighsSimpleMultiObjectiveTest,
 INSTANTIATE_TEST_SUITE_P(HighsIncrementalMultiObjectiveTest,
                          IncrementalMultiObjectiveTest,
                          Values(GetHighsMultiObjectiveTestParameters()));
+
+// HiGHS has no native indicator constraint support. The MathOpt backend
+// reformulates indicator constraints as big-M linear inequalities at
+// ingestion time. See kHighsSupportedStructures / AddIndicatorConstraintAsBigM
+// in highs_solver.cc. HiGHS does not support incremental updates, so
+// supports_incremental_add_and_deletes is false.
+LogicalConstraintTestParameters GetHighsLogicalConstraintTestParameters() {
+  return LogicalConstraintTestParameters(
+      SolverType::kHighs, SolveParameters(),
+      /*supports_integer_variables=*/true,
+      /*supports_sos1=*/false,
+      /*supports_sos2=*/false,
+      /*supports_indicator_constraints=*/true,
+      /*supports_incremental_add_and_deletes=*/false,
+      /*supports_incremental_variable_deletions=*/false,
+      /*supports_deleting_indicator_variables=*/false,
+      /*supports_updating_binary_variables=*/false);
+}
+INSTANTIATE_TEST_SUITE_P(HighsSimpleLogicalConstraintTest,
+                         SimpleLogicalConstraintTest,
+                         Values(GetHighsLogicalConstraintTestParameters()));
+INSTANTIATE_TEST_SUITE_P(HighsIncrementalLogicalConstraintTest,
+                         IncrementalLogicalConstraintTest,
+                         Values(GetHighsLogicalConstraintTestParameters()));
 
 TEST(HighsSolverTest, FractionalBoundsForIntegerVariables) {
   Model model;

@@ -28,8 +28,10 @@
 #include "absl/status/statusor.h"
 #include "lp_data/HConst.h"
 #include "lp_data/HighsInfo.h"
+#include "lp_data/HighsLp.h"
 #include "ortools/base/status_builder.h"
 #include "ortools/math_opt/callback.pb.h"
+#include "ortools/math_opt/core/invalid_indicators.h"
 #include "ortools/math_opt/core/inverted_bounds.h"
 #include "ortools/math_opt/core/solver_interface.h"
 #include "ortools/math_opt/model.pb.h"
@@ -103,10 +105,14 @@ class HighsSolver : public SolverInterface {
   };
   HighsSolver(std::unique_ptr<Highs> highs,
               absl::flat_hash_map<int64_t, IndexAndBound> variable_data,
-              absl::flat_hash_map<int64_t, IndexAndBound> lin_con_data)
+              absl::flat_hash_map<int64_t, IndexAndBound> lin_con_data,
+              int num_auxiliary_rows,
+              InvalidIndicators invalid_indicators)
       : highs_(std::move(highs)),
         variable_data_(std::move(variable_data)),
-        lin_con_data_(std::move(lin_con_data)) {}
+        lin_con_data_(std::move(lin_con_data)),
+        num_auxiliary_rows_(num_auxiliary_rows),
+        invalid_indicators_(std::move(invalid_indicators)) {}
 
   absl::StatusOr<bool> PrimalRayReturned() const;
   absl::StatusOr<bool> DualRayReturned() const;
@@ -143,10 +149,13 @@ class HighsSolver : public SolverInterface {
 
   template <typename T>
   absl::Status EnsureOneEntryPerLinearConstraint(const std::vector<T>& vec) {
-    if (vec.size() != lin_con_data_.size()) {
+    const size_t expected = lin_con_data_.size() + num_auxiliary_rows_;
+    if (vec.size() != expected) {
       return util::InvalidArgumentErrorBuilder()
              << "expected one entry per linear constraint, but model had "
-             << lin_con_data_.size() << " linear constraints and found "
+             << expected << " rows (" << lin_con_data_.size()
+             << " user linear constraints + " << num_auxiliary_rows_
+             << " auxiliary rows for indicator constraints) and found "
              << vec.size() << " elements";
     }
     return absl::OkStatus();
@@ -164,6 +173,17 @@ class HighsSolver : public SolverInterface {
 
   InvertedBounds ListInvertedBounds();
 
+  // Reformulates a single indicator constraint into big-M linear inequalities
+  // appended to `lp`. Returns the number of rows appended (0 if the
+  // constraint is a no-op, 1 for a one-sided implied bound, 2 for an
+  // equality). Errors when a needed expression bound is infinite (in which
+  // case big-M reformulation would be unsound). See implementation for the
+  // exact formulation.
+  static absl::StatusOr<int> AddIndicatorConstraintAsBigM(
+      int64_t constraint_id, const IndicatorConstraintProto& ind_con,
+      const absl::flat_hash_map<int64_t, IndexAndBound>& variable_data,
+      HighsLp& lp, InvalidIndicators& invalid_indicators);
+
   std::unique_ptr<Highs> highs_;
 
   // Key is the mathopt id, value.index is the variable index in HiGHS.
@@ -171,6 +191,18 @@ class HighsSolver : public SolverInterface {
 
   // Key is the mathopt id, value.index is the linear constraint index in HiGHS.
   absl::flat_hash_map<int64_t, IndexAndBound> lin_con_data_;
+
+  // Number of extra rows appended to the HiGHS model to encode indicator
+  // constraints (as a big-M reformulation). These rows have HiGHS indices
+  // starting at lin_con_data_.size() and are not exposed to MathOpt users.
+  int num_auxiliary_rows_ = 0;
+
+  // Indicator constraints (identified at model-ingestion time) whose indicator
+  // variable is not binary. These are surfaced as an error at Solve() time so
+  // that the reported message matches the "indicator variable is not binary"
+  // contract shared with other MathOpt solver backends. Empty means no such
+  // invalid indicators were detected.
+  InvalidIndicators invalid_indicators_;
 };
 
 }  // namespace operations_research::math_opt

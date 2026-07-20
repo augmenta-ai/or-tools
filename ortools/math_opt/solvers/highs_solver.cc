@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <optional>
 #include <string>
 #include <utility>
@@ -54,6 +55,7 @@
 #include "ortools/base/status_builder.h"
 #include "ortools/base/status_macros.h"
 #include "ortools/math_opt/core/empty_bounds.h"
+#include "ortools/math_opt/core/invalid_indicators.h"
 #include "ortools/math_opt/core/inverted_bounds.h"
 #include "ortools/math_opt/core/math_opt_proto_utils.h"
 #include "ortools/math_opt/core/solver_interface.h"
@@ -77,7 +79,13 @@ constexpr absl::string_view kLogToConsole = "log_to_console";
 
 constexpr SupportedProblemStructures kHighsSupportedStructures = {
     .integer_variables = SupportType::kSupported,
-    .quadratic_objectives = SupportType::kNotImplemented};
+    .quadratic_objectives = SupportType::kNotImplemented,
+    // HiGHS has no native indicator constraint API; this backend rewrites
+    // indicator constraints as a big-M linear formulation at ingestion time
+    // (see AddIndicatorConstraintAsBigM in this file). The rewrite requires
+    // that the implied linear expression have finite bounds derivable from
+    // variable bounds; otherwise HighsSolver::New() will return an error.
+    .indicator_constraints = SupportType::kSupported};
 
 absl::Status ToStatus(const HighsStatus status) {
   switch (status) {
@@ -790,6 +798,261 @@ HighsSolver::ExtractSolutionAndRays(
   return solution_and_claims;
 }
 
+// Reformulates a single indicator constraint into big-M linear inequalities
+// appended to `lp`. Returns the number of rows appended (0 if the constraint
+// is a no-op, 1 for a one-sided implied bound, 2 for an equality).
+//
+// The transformation is (denoting the indicator variable x, the implied
+// linear expression e = <a, y>, and, for the current variable bounds,
+// LB(e), UB(e) the corresponding expression bounds):
+//
+//   activate_on_zero=false:  x = 1  ==>  lb <= e <= ub
+//       if ub finite:  e + (UB(e) - ub) * x <= UB(e)
+//       if lb finite:  e + (LB(e) - lb) * x >= LB(e)
+//
+//   activate_on_zero=true:   x = 0  ==>  lb <= e <= ub
+//       if ub finite:  e - (UB(e) - ub) * x <= ub
+//       if lb finite:  e - (LB(e) - lb) * x >= lb
+//
+// Errors out when the implied expression bounds cannot be computed finitely
+// (in either relevant direction), because a large-but-safe M cannot be
+// chosen and the reformulation would be unsound.
+//
+// Ranged implied constraints (lb finite < ub finite with lb != ub) are
+// rejected to match the behavior of the SCIP MathOpt backend.
+//
+// If the indicator variable is missing (`!has_indicator_id()`) or was
+// deleted, the constraint is a no-op and 0 is returned. If the indicator
+// variable is not binary, the constraint is recorded in `invalid_indicators`
+// and 0 rows are added (the error is surfaced at Solve() time).
+absl::StatusOr<int> HighsSolver::AddIndicatorConstraintAsBigM(
+    const int64_t constraint_id, const IndicatorConstraintProto& ind_con,
+    const absl::flat_hash_map<int64_t, HighsSolver::IndexAndBound>&
+        variable_data,
+    HighsLp& lp, InvalidIndicators& invalid_indicators) {
+  // A missing/deleted indicator variable means the constraint is ignored.
+  if (!ind_con.has_indicator_id()) {
+    return 0;
+  }
+  const auto ind_var_it = variable_data.find(ind_con.indicator_id());
+  if (ind_var_it == variable_data.end()) {
+    // Indicator variable was deleted between model construction and now.
+    return 0;
+  }
+  const HighsSolver::IndexAndBound& ind_var = ind_var_it->second;
+
+  // Validate that the indicator variable is binary. Non-binary indicator
+  // variables are recorded and surfaced as an error at Solve() time.
+  if (!ind_var.is_integer || ind_var.lb < 0.0 || ind_var.ub > 1.0) {
+    invalid_indicators.invalid_indicators.push_back(
+        {.variable = ind_con.indicator_id(), .constraint = constraint_id});
+    return 0;
+  }
+
+  const double lb = ind_con.lower_bound();
+  const double ub = ind_con.upper_bound();
+  const bool lb_finite = std::isfinite(lb);
+  const bool ub_finite = std::isfinite(ub);
+
+  if (!lb_finite && !ub_finite) {
+    // No side to enforce; nothing to add.
+    return 0;
+  }
+
+  // Match the SCIP backend, which rejects ranged implied constraints.
+  if (lb_finite && ub_finite && lb != ub) {
+    return util::InvalidArgumentErrorBuilder()
+           << "HiGHS does not support indicator constraints with ranged "
+              "implied constraints, i.e., where both bounds are finite and "
+              "distinct; got lower_bound="
+           << lb << ", upper_bound=" << ub;
+  }
+
+  // Compute bounds on the implied expression from the variable bounds. This
+  // is used to derive the smallest safe big-M. Bail out with a clear error
+  // if a needed bound is infinite (a big-M reformulation would be unsound).
+  const SparseDoubleVectorProto& expression = ind_con.expression();
+  double expr_lb = 0.0;
+  double expr_ub = 0.0;
+  bool expr_lb_finite = true;
+  bool expr_ub_finite = true;
+  for (int i = 0; i < expression.ids_size(); ++i) {
+    const double coef = expression.values(i);
+    if (coef == 0.0) continue;
+    const auto var_it = variable_data.find(expression.ids(i));
+    if (var_it == variable_data.end()) {
+      // Per IndicatorConstraintProto semantics, a deleted variable is treated
+      // as if fixed to zero, so it contributes 0 to both bounds.
+      continue;
+    }
+    const double v_lb = var_it->second.lb;
+    const double v_ub = var_it->second.ub;
+    if (coef > 0.0) {
+      if (std::isfinite(v_lb)) {
+        expr_lb += coef * v_lb;
+      } else {
+        expr_lb_finite = false;
+      }
+      if (std::isfinite(v_ub)) {
+        expr_ub += coef * v_ub;
+      } else {
+        expr_ub_finite = false;
+      }
+    } else {
+      if (std::isfinite(v_ub)) {
+        expr_lb += coef * v_ub;
+      } else {
+        expr_lb_finite = false;
+      }
+      if (std::isfinite(v_lb)) {
+        expr_ub += coef * v_lb;
+      } else {
+        expr_ub_finite = false;
+      }
+    }
+  }
+
+  auto append_row = [&](const std::vector<int>& indices,
+                        const std::vector<double>& values, const double row_lb,
+                        const double row_ub, absl::string_view name) {
+    for (size_t k = 0; k < indices.size(); ++k) {
+      lp.a_matrix_.index_.push_back(indices[k]);
+      lp.a_matrix_.value_.push_back(values[k]);
+    }
+    lp.a_matrix_.start_.push_back(
+        static_cast<HighsInt>(lp.a_matrix_.index_.size()));
+    lp.row_lower_.push_back(row_lb);
+    lp.row_upper_.push_back(row_ub);
+    lp.row_names_.push_back(std::string(name));
+    ++lp.num_row_;
+  };
+
+  const int ind_col = ind_var.index;
+  const bool activate_on_zero = ind_con.activate_on_zero();
+  int rows_added = 0;
+
+  // Helper that, given a map of column-index -> coefficient contribution from
+  // the implied expression, plus an additional delta on the indicator column,
+  // packs the entries into parallel {indices, values} vectors sorted by
+  // column index (as HiGHS expects sorted row entries).
+  auto pack_row = [&](double indicator_col_delta,
+                      std::vector<int>* out_indices,
+                      std::vector<double>* out_values) {
+    absl::flat_hash_map<int, double> col_to_coef;
+    col_to_coef.reserve(expression.ids_size() + 1);
+    for (int i = 0; i < expression.ids_size(); ++i) {
+      const double coef = expression.values(i);
+      if (coef == 0.0) continue;
+      const auto var_it = variable_data.find(expression.ids(i));
+      if (var_it == variable_data.end()) continue;
+      col_to_coef[var_it->second.index] += coef;
+    }
+    if (indicator_col_delta != 0.0) {
+      col_to_coef[ind_col] += indicator_col_delta;
+    }
+    out_indices->clear();
+    out_values->clear();
+    out_indices->reserve(col_to_coef.size());
+    out_values->reserve(col_to_coef.size());
+    for (const auto& [col, coef] : col_to_coef) {
+      if (coef == 0.0) continue;
+      out_indices->push_back(col);
+      out_values->push_back(coef);
+    }
+    // HiGHS documents that row entries within a row should have distinct
+    // column indices in strictly increasing order. Sort accordingly.
+    std::vector<int> perm(out_indices->size());
+    std::iota(perm.begin(), perm.end(), 0);
+    std::sort(perm.begin(), perm.end(), [&](int a, int b) {
+      return (*out_indices)[a] < (*out_indices)[b];
+    });
+    std::vector<int> sorted_indices;
+    std::vector<double> sorted_values;
+    sorted_indices.reserve(out_indices->size());
+    sorted_values.reserve(out_values->size());
+    for (const int p : perm) {
+      sorted_indices.push_back((*out_indices)[p]);
+      sorted_values.push_back((*out_values)[p]);
+    }
+    *out_indices = std::move(sorted_indices);
+    *out_values = std::move(sorted_values);
+  };
+
+  std::vector<int> row_indices;
+  std::vector<double> row_values;
+  constexpr double kInf = std::numeric_limits<double>::infinity();
+
+  if (ub_finite) {
+    if (!expr_ub_finite) {
+      return util::InvalidArgumentErrorBuilder()
+             << "HiGHS backend cannot reformulate indicator constraint id "
+             << constraint_id << " (name: '" << ind_con.name()
+             << "') as big-M: an upper bound on the implied expression is "
+                "required but cannot be finite (some participating variable "
+                "has infinite upper/lower bound in the relevant direction)";
+    }
+    const double m_ub = expr_ub - ub;  // >= 0
+    // activate_on_zero=false:  e + m_ub * x <= UB(e)
+    // activate_on_zero=true:   e - m_ub * x <= ub
+    const double indicator_delta = activate_on_zero ? -m_ub : m_ub;
+    const double row_upper = activate_on_zero ? ub : expr_ub;
+    pack_row(indicator_delta, &row_indices, &row_values);
+    append_row(row_indices, row_values, /*row_lb=*/-kInf,
+               /*row_ub=*/row_upper,
+               ind_con.name().empty()
+                   ? std::string()
+                   : ind_con.name() + std::string("_ub"));
+    ++rows_added;
+  }
+  if (lb_finite && !(ub_finite && lb == ub)) {
+    if (!expr_lb_finite) {
+      return util::InvalidArgumentErrorBuilder()
+             << "HiGHS backend cannot reformulate indicator constraint id "
+             << constraint_id << " (name: '" << ind_con.name()
+             << "') as big-M: a lower bound on the implied expression is "
+                "required but cannot be finite (some participating variable "
+                "has infinite lower/upper bound in the relevant direction)";
+    }
+    const double m_lb = expr_lb - lb;  // <= 0
+    // activate_on_zero=false:  e + m_lb * x >= LB(e)
+    // activate_on_zero=true:   e - m_lb * x >= lb
+    const double indicator_delta = activate_on_zero ? -m_lb : m_lb;
+    const double row_lower = activate_on_zero ? lb : expr_lb;
+    pack_row(indicator_delta, &row_indices, &row_values);
+    append_row(row_indices, row_values, /*row_lb=*/row_lower,
+               /*row_ub=*/kInf,
+               ind_con.name().empty()
+                   ? std::string()
+                   : ind_con.name() + std::string("_lb"));
+    ++rows_added;
+  } else if (lb_finite && ub_finite && lb == ub) {
+    // Equality case: add the "lower bound" side using the same coefficients
+    // as the upper bound side (they coincide when lb == ub). We already added
+    // the upper side above with row_ub = (activate_on_zero ? ub : expr_ub);
+    // now extend the same row's lower bound instead of appending a new row.
+    // For simplicity, add a second row for the >= side.
+    if (!expr_lb_finite) {
+      return util::InvalidArgumentErrorBuilder()
+             << "HiGHS backend cannot reformulate equality-form indicator "
+                "constraint id "
+             << constraint_id << " (name: '" << ind_con.name()
+             << "') as big-M: a lower bound on the implied expression is "
+                "required but cannot be finite";
+    }
+    const double m_lb = expr_lb - lb;
+    const double indicator_delta = activate_on_zero ? -m_lb : m_lb;
+    const double row_lower = activate_on_zero ? lb : expr_lb;
+    pack_row(indicator_delta, &row_indices, &row_values);
+    append_row(row_indices, row_values, /*row_lb=*/row_lower,
+               /*row_ub=*/kInf,
+               ind_con.name().empty()
+                   ? std::string()
+                   : ind_con.name() + std::string("_lb"));
+    ++rows_added;
+  }
+  return rows_added;
+}
+
 absl::StatusOr<std::unique_ptr<SolverInterface>> HighsSolver::New(
     const ModelProto& model, const InitArgs&) {
   RETURN_IF_ERROR(ModelIsSupported(model, kHighsSupportedStructures, "Highs"));
@@ -897,6 +1160,25 @@ absl::StatusOr<std::unique_ptr<SolverInterface>> HighsSolver::New(
     lp.a_matrix_.index_.push_back(var);
     lp.a_matrix_.value_.push_back(coef);
   }
+  // Reformulate indicator constraints as big-M linear inequalities. HiGHS has
+  // no native indicator constraint API, so this is the only path to support
+  // them. The reformulation requires finite bounds on the implied expression,
+  // computed here from the participating variables' bounds. Non-binary
+  // indicator variables are recorded and surfaced as an error at Solve()
+  // time (matching the contract used by the SCIP backend).
+  int num_auxiliary_rows = 0;
+  InvalidIndicators invalid_indicators;
+  for (const auto& [ind_id, ind_con] : model.indicator_constraints()) {
+    OR_ASSIGN_OR_RETURN3(
+        const int rows_added,
+        AddIndicatorConstraintAsBigM(ind_id, ind_con, variable_data, lp,
+                                     invalid_indicators),
+        _ << "failed to reformulate indicator constraint with id " << ind_id
+          << " (name: '" << ind_con.name() << "') for HiGHS");
+    num_auxiliary_rows += rows_added;
+  }
+  invalid_indicators.Sort();
+  lp.a_matrix_.num_row_ = lp.num_row_;
   auto highs = std::make_unique<Highs>();
   // Disable output immediately, calling passModel() below will generate output
   // otherwise.
@@ -906,7 +1188,8 @@ absl::StatusOr<std::unique_ptr<SolverInterface>> HighsSolver::New(
   RETURN_IF_ERROR(ToStatus(highs->passOptions(disable_output)));
   RETURN_IF_ERROR(ToStatus(highs->passModel(std::move(highs_model))));
   return absl::WrapUnique(new HighsSolver(
-      std::move(highs), std::move(variable_data), std::move(lin_con_data)));
+      std::move(highs), std::move(variable_data), std::move(lin_con_data),
+      num_auxiliary_rows, std::move(invalid_indicators)));
 }
 
 absl::StatusOr<SolveResultProto> HighsSolver::Solve(
@@ -942,6 +1225,11 @@ absl::StatusOr<SolveResultProto> HighsSolver::Solve(
   }
 
   RETURN_IF_ERROR(ListInvertedBounds().ToStatus());
+  // Indicator constraints referencing non-binary indicator variables are
+  // collected during model ingestion (see AddIndicatorConstraintAsBigM) and
+  // reported here to match the "indicator variable is not binary" contract
+  // shared with other MathOpt solver backends.
+  RETURN_IF_ERROR(invalid_indicators_.ToStatus());
   // TODO(b/271595607): delete this code once we upgrade HiGHS, if HiGHS does
   // return a proper infeasibility status for models with empty integer bounds.
   const bool is_maximize = highs_->getModel().lp_.sense_ == ObjSense::kMaximize;
